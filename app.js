@@ -1,10 +1,18 @@
 const express = require("express");
 const app = express();
-const port = 3000;
 const Sequelize = require("sequelize");
+require('dotenv').config()
+const {
+  PORT,
+  DB_HOST,
+  DB_USERNAME,
+  DB_PASSWORD,
+  DB_NAME
+} = process.env
 const sequelize = new Sequelize(
-  "postgres://postgres:root@localhost:5432/test_exaditama"
+  `postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}`
 );
+const port = PORT;
 sequelize
   .authenticate()
   .then(() => {
@@ -15,27 +23,25 @@ sequelize
   });
 const Model = Sequelize.Model;
 class Club extends Model {}
-Club.init(
-  {
-    club_name: {
-      type: Sequelize.STRING,
-      allowNull: false,
-    },
-    points: {
-      type: Sequelize.INTEGER,
-      allowNull: false,
-    },
+Club.init({
+  club_name: {
+    type: Sequelize.STRING,
+    allowNull: false,
   },
-  {
-    sequelize,
-    modelName: "Club",
-    freezeTableName: true,
-    tableName: "club_table",
-  }
-);
-Club.sync({ force: true }).then(() => {
-  var data = [
-    {
+  points: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+  },
+}, {
+  sequelize,
+  modelName: "Club",
+  freezeTableName: true,
+  tableName: "club_table",
+});
+Club.sync({
+  force: true
+}).then(() => {
+  var data = [{
       club_name: "Man Utd",
       points: 0,
     },
@@ -48,11 +54,17 @@ Club.sync({ force: true }).then(() => {
       points: 0,
     },
   ];
-  Club.bulkCreate(data, { returning: true });
+  Club.bulkCreate(data, {
+    returning: true
+  });
 });
 app.use(express.json());
 app.post("/football/recordgame", (req, res) => {
-  var { clubhomename, clubawayname, score } = req.body;
+  var {
+    clubhomename,
+    clubawayname,
+    score
+  } = req.body;
   var arrScore = score.split(":");
   if (arrScore[0] > arrScore[1]) {
     updatePoints(clubhomename, 3);
@@ -70,7 +82,9 @@ app.post("/football/recordgame", (req, res) => {
 app.get("/football/leaguestanding", async (req, res) => {
   var data = await Club.findAll({
     attributes: ["club_name", "points"],
-    order: [["points", "DESC"]],
+    order: [
+      ["points", "DESC"]
+    ],
   });
   res.json({
     success: data,
@@ -104,7 +118,7 @@ app.get("/football/rank", async (req, res) => {
   });
 });
 
-app.listen(port, () => console.log("running on port:" + port));
+app.listen(PORT, () => console.log("running on port:" + PORT));
 
 async function updatePoints(clubName, points) {
   try {
@@ -119,16 +133,13 @@ async function updatePoints(clubName, points) {
   }
 
   try {
-    Club.update(
-      {
-        points: club.dataValues.points + points,
+    Club.update({
+      points: club.dataValues.points + points,
+    }, {
+      where: {
+        club_name: clubName,
       },
-      {
-        where: {
-          club_name: clubName,
-        },
-      }
-    );
+    });
   } catch (err) {
     console.error(err);
   }
